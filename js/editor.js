@@ -423,10 +423,12 @@ function launchEditor(img, file, resolve) {
   });
 
   document.getElementById('editor-save').addEventListener('click', async () => {
-    // Apply edits at full resolution and compress
-    const result = await processPhotoWithEdits(file, crop, adjust);
+    // Apply edits using the already-loaded image (no need to re-read the file)
+    const edited = applyManualEdits(img, crop, adjust);
+    const photoBlob = await compressCanvas(edited, PHOTO_MAX_WIDTH, PHOTO_QUALITY);
+    const thumbnailBlob = await compressCanvas(edited, THUMB_MAX_WIDTH, THUMB_QUALITY);
     cleanup();
-    resolve(result);
+    resolve({ photoBlob, thumbnailBlob });
   });
 
   // Initial draw

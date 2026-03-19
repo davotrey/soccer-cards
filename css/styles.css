@@ -301,8 +301,15 @@ body {
 }
 
 .card-slot.collected {
-  box-shadow: 0 0 0 2px var(--gold), 0 2px 8px rgba(226, 183, 20, 0.25);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
 }
+
+/* Rarity outline colors */
+.card-slot.rarity-white { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); }
+.card-slot.rarity-blue { box-shadow: 0 0 0 2px #3b82f6; }
+.card-slot.rarity-yellow { box-shadow: 0 0 0 2px #eab308; }
+.card-slot.rarity-green { box-shadow: 0 0 0 2px #22c55e; }
+.card-slot.rarity-gold { box-shadow: 0 0 0 2px #e2b714, 0 2px 8px rgba(226, 183, 20, 0.25); }
 
 .card-thumb {
   width: 100%;
@@ -527,6 +534,13 @@ body {
   border: 2px solid var(--gold-dim);
 }
 
+/* Card detail photo rarity borders */
+.card-full-image.rarity-border-white { border-color: rgba(255, 255, 255, 0.5); }
+.card-full-image.rarity-border-blue { border-color: #3b82f6; }
+.card-full-image.rarity-border-yellow { border-color: #eab308; }
+.card-full-image.rarity-border-green { border-color: #22c55e; }
+.card-full-image.rarity-border-gold { border-color: #e2b714; box-shadow: 0 4px 20px rgba(226, 183, 20, 0.3); }
+
 .card-placeholder-large {
   width: 100%;
   aspect-ratio: 5/7;
@@ -582,6 +596,47 @@ body {
   gap: 10px;
   width: 100%;
   max-width: 320px;
+}
+
+/* === Rarity Selector === */
+.rarity-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+  max-width: 320px;
+}
+
+.rarity-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.rarity-options {
+  display: flex;
+  gap: 10px;
+}
+
+.rarity-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  outline: none;
+  padding: 0;
+}
+
+.rarity-circle:active {
+  transform: scale(0.9);
+}
+
+.rarity-circle.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
 }
 
 /* === Buttons === */

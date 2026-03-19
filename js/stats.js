@@ -1,16 +1,20 @@
 // Collection progress calculations
 
-// Cache for collected card numbers (refreshed on each stats call)
-let _collectedSet = new Set();
+// Cache for collected card numbers + rarity (refreshed on each stats call)
+let _collectedSet = new Map();
 
 async function refreshCollectedSet() {
   const all = await getAllCollected();
-  _collectedSet = new Set(all.map(c => c.cardNumber));
+  _collectedSet = new Map(all.map(c => [c.cardNumber, c.rarity || 'white']));
   return _collectedSet;
 }
 
 function isCollected(cardNumber) {
   return _collectedSet.has(cardNumber);
+}
+
+function getRarity(cardNumber) {
+  return _collectedSet.get(cardNumber) || 'white';
 }
 
 function getOverallStats() {

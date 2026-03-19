@@ -261,8 +261,10 @@ async function renderBinderPage(containerId, cards, page) {
     const collected = isCollected(card.number);
     const thumbURL = collected ? await getThumbnailURL(card.number) : null;
 
+    const rarity = collected ? getRarity(card.number) : '';
+
     return `
-      <div class="card-slot ${collected ? 'collected' : ''}" onclick="navigateTo('/card/${card.number}')">
+      <div class="card-slot ${collected ? 'collected' : ''} ${collected ? 'rarity-' + rarity : ''}" onclick="navigateTo('/card/${card.number}')">
         ${thumbURL
           ? `<img src="${thumbURL}" alt="${card.name}" class="card-thumb" loading="lazy">`
           : `<div class="card-placeholder">
@@ -333,9 +335,10 @@ async function renderCardGrid(cards) {
   const items = await Promise.all(cards.map(async (card) => {
     const collected = isCollected(card.number);
     const thumbURL = collected ? await getThumbnailURL(card.number) : null;
+    const rarity = collected ? getRarity(card.number) : '';
 
     return `
-      <div class="card-slot ${collected ? 'collected' : ''}" onclick="navigateTo('/card/${card.number}')">
+      <div class="card-slot ${collected ? 'collected' : ''} ${collected ? 'rarity-' + rarity : ''}" onclick="navigateTo('/card/${card.number}')">
         ${thumbURL
           ? `<img src="${thumbURL}" alt="${card.name}" class="card-thumb" loading="lazy">`
           : `<div class="card-placeholder">
@@ -356,12 +359,35 @@ async function renderCardDetail(cardNumber) {
   if (!card) { renderNotFound(); return; }
 
   const collected = isCollected(card.number);
+  const rarity = collected ? getRarity(card.number) : 'white';
   const photoData = await getPhoto(card.number);
   const photoURL = photoData && photoData.photoBlob
     ? URL.createObjectURL(photoData.photoBlob) : null;
 
   const teamName = getTeamName(card.team);
   const catName = getCategoryName(card.category);
+
+  const rarityOptions = [
+    { id: 'white', label: 'W', color: 'rgba(255,255,255,0.5)' },
+    { id: 'blue', label: 'B', color: '#3b82f6' },
+    { id: 'yellow', label: 'Y', color: '#eab308' },
+    { id: 'green', label: 'G', color: '#22c55e' },
+    { id: 'gold', label: 'Gold', color: '#e2b714' }
+  ];
+
+  const raritySelectorHTML = collected ? `
+      <div class="rarity-selector">
+        <span class="rarity-label">Rarity:</span>
+        <div class="rarity-options">
+          ${rarityOptions.map(r => `
+            <button class="rarity-circle ${r.id === rarity ? 'active' : ''}"
+              style="background:${r.color}"
+              onclick="handleRarityChange('${card.number}', '${r.id}')"
+              title="${r.label}">
+            </button>
+          `).join('')}
+        </div>
+      </div>` : '';
 
   contentEl().innerHTML = `
     <div class="screen-header">
@@ -371,7 +397,7 @@ async function renderCardDetail(cardNumber) {
     <div class="card-detail">
       <div class="card-detail-image">
         ${photoURL
-          ? `<img src="${photoURL}" alt="${card.name}" class="card-full-image">`
+          ? `<img src="${photoURL}" alt="${card.name}" class="card-full-image rarity-border-${rarity}">`
           : `<div class="card-placeholder-large">
                <img src="img/placeholder.svg" alt="Not collected">
              </div>`
@@ -397,6 +423,7 @@ async function renderCardDetail(cardNumber) {
              </button>`
         }
       </div>
+      ${raritySelectorHTML}
     </div>`;
 }
 
@@ -453,6 +480,13 @@ async function handleRetakePhoto(cardNumber) {
 async function handleRemoveCard(cardNumber) {
   if (!confirm('Remove this card from your collection?')) return;
   await markUncollected(cardNumber);
+  await refreshCollectedSet();
+  delete thumbCache[cardNumber];
+  renderCardDetail(cardNumber);
+}
+
+async function handleRarityChange(cardNumber, rarity) {
+  await updateRarity(cardNumber, rarity);
   await refreshCollectedSet();
   delete thumbCache[cardNumber];
   renderCardDetail(cardNumber);

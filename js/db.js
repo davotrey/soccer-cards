@@ -32,14 +32,32 @@ function initDB() {
   });
 }
 
-function markCollected(cardNumber) {
+function markCollected(cardNumber, rarity = 'white') {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('collection', 'readwrite');
     tx.objectStore('collection').put({
       cardNumber,
       collected: true,
+      rarity,
       dateAdded: new Date().toISOString()
     });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+function updateRarity(cardNumber, rarity) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('collection', 'readwrite');
+    const store = tx.objectStore('collection');
+    const request = store.get(cardNumber);
+    request.onsuccess = () => {
+      const record = request.result;
+      if (record) {
+        record.rarity = rarity;
+        store.put(record);
+      }
+    };
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -130,9 +148,9 @@ async function importData(jsonString) {
     tx.onerror = () => reject(tx.error);
   });
 
-  // Import collection status
+  // Import collection status (preserve rarity from backup)
   for (const item of data.collection) {
-    await markCollected(item.cardNumber);
+    await markCollected(item.cardNumber, item.rarity || 'white');
   }
 
   // Import photos

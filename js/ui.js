@@ -406,8 +406,19 @@ async function handleCollectCard(cardNumber) {
   // Open camera FIRST — must be synchronous with user tap, before any await,
   // otherwise mobile browsers block the programmatic file-input click
   createPhotoInput(async (file) => {
-    const { photoBlob, thumbnailBlob } = await processPhoto(file);
-    await savePhoto(cardNumber, photoBlob, thumbnailBlob);
+    let photoResult;
+    try {
+      if (typeof openPhotoEditor === 'function') {
+        photoResult = await openPhotoEditor(file);
+        if (!photoResult) return; // User cancelled
+      } else {
+        photoResult = await processPhoto(file);
+      }
+    } catch (e) {
+      console.error('Photo processing error:', e);
+      photoResult = await processPhoto(file);
+    }
+    await savePhoto(cardNumber, photoResult.photoBlob, photoResult.thumbnailBlob);
     delete thumbCache[cardNumber];
     renderCardDetail(cardNumber);
   });
@@ -421,8 +432,19 @@ async function handleCollectCard(cardNumber) {
 
 async function handleRetakePhoto(cardNumber) {
   createPhotoInput(async (file) => {
-    const { photoBlob, thumbnailBlob } = await processPhoto(file);
-    await savePhoto(cardNumber, photoBlob, thumbnailBlob);
+    let photoResult;
+    try {
+      if (typeof openPhotoEditor === 'function') {
+        photoResult = await openPhotoEditor(file);
+        if (!photoResult) return; // User cancelled
+      } else {
+        photoResult = await processPhoto(file);
+      }
+    } catch (e) {
+      console.error('Photo processing error:', e);
+      photoResult = await processPhoto(file);
+    }
+    await savePhoto(cardNumber, photoResult.photoBlob, photoResult.thumbnailBlob);
     delete thumbCache[cardNumber];
     renderCardDetail(cardNumber);
   });

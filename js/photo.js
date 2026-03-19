@@ -9,6 +9,108 @@ const CARD_ASPECT_RATIO = 5 / 7; // Standard card proportions (width / height)
 
 // --- Auto-crop: detect card edges and crop tightly ---
 
+// Returns raw crop coordinates { x, y, w, h } for the editor's initial suggestion
+function getAutoCropBounds(img) {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = imageData.data;
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const gray = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    gray[i] = Math.round(0.299 * pixels[i * 4] + 0.587 * pixels[i * 4 + 1] + 0.114 * pixels[i * 4 + 2]);
+  }
+
+  let totalBrightness = 0;
+  for (let i = 0; i < gray.length; i++) totalBrightness += gray[i];
+  const avgBrightness = totalBrightness / gray.length;
+  const threshold = Math.max(avgBrightness * 0.6, 40);
+  const edgeFraction = 0.3;
+
+  let top = 0;
+  for (let y = 0; y < h; y++) {
+    let bright = 0;
+    for (let x = 0; x < w; x++) { if (gray[y * w + x] > threshold) bright++; }
+    if (bright / w >= edgeFraction) { top = y; break; }
+  }
+  let bottom = h - 1;
+  for (let y = h - 1; y >= 0; y--) {
+    let bright = 0;
+    for (let x = 0; x < w; x++) { if (gray[y * w + x] > threshold) bright++; }
+    if (bright / w >= edgeFraction) { bottom = y; break; }
+  }
+  let left = 0;
+  for (let x = 0; x < w; x++) {
+    let bright = 0;
+    for (let y = 0; y < h; y++) { if (gray[y * w + x] > threshold) bright++; }
+    if (bright / h >= edgeFraction) { left = x; break; }
+  }
+  let right = w - 1;
+  for (let x = w - 1; x >= 0; x--) {
+    let bright = 0;
+    for (let y = 0; y < h; y++) { if (gray[y * w + x] > threshold) bright++; }
+    if (bright / h >= edgeFraction) { right = x; break; }
+  }
+
+  let cropX = left, cropY = top, cropW = right - left + 1, cropH = bottom - top + 1;
+  const minCropFraction = 0.2;
+  if (cropW < w * minCropFraction || cropH < h * minCropFraction || cropW <= 0 || cropH <= 0) {
+    // Fallback: center crop at 5:7
+    if (w / h > CARD_ASPECT_RATIO) {
+      cropH = h; cropW = Math.round(h * CARD_ASPECT_RATIO);
+      cropX = Math.round((w - cropW) / 2); cropY = 0;
+    } else {
+      cropW = w; cropH = Math.round(w / CARD_ASPECT_RATIO);
+      cropX = 0; cropY = Math.round((h - cropH) / 2);
+    }
+    return { x: cropX, y: cropY, w: cropW, h: cropH };
+  }
+
+  // Add margin
+  const marginX = Math.round(cropW * 0.02);
+  const marginY = Math.round(cropH * 0.02);
+  cropX = Math.max(0, cropX - marginX);
+  cropY = Math.max(0, cropY - marginY);
+  cropW = Math.min(w - cropX, cropW + marginX * 2);
+  cropH = Math.min(h - cropY, cropH + marginY * 2);
+
+  // Force 5:7 aspect ratio on bounds
+  const currentRatio = cropW / cropH;
+  if (currentRatio > CARD_ASPECT_RATIO) {
+    const targetH = Math.round(cropW / CARD_ASPECT_RATIO);
+    if (targetH <= h) {
+      cropY = Math.max(0, cropY - Math.round((targetH - cropH) / 2));
+      cropH = targetH;
+      if (cropY + cropH > h) cropY = h - cropH;
+    } else {
+      cropH = h; cropY = 0;
+      const targetW = Math.round(cropH * CARD_ASPECT_RATIO);
+      cropX = cropX + Math.round((cropW - targetW) / 2);
+      cropW = targetW;
+    }
+  } else {
+    const targetW = Math.round(cropH * CARD_ASPECT_RATIO);
+    if (targetW <= w) {
+      cropX = Math.max(0, cropX - Math.round((targetW - cropW) / 2));
+      cropW = targetW;
+      if (cropX + cropW > w) cropX = w - cropW;
+    } else {
+      cropW = w; cropX = 0;
+      const targetH = Math.round(cropW / CARD_ASPECT_RATIO);
+      cropY = cropY + Math.round((cropH - targetH) / 2);
+      cropH = targetH;
+    }
+  }
+
+  return { x: cropX, y: cropY, w: cropW, h: cropH };
+}
+
 function autoCropCard(img) {
   const canvas = document.createElement('canvas');
   canvas.width = img.width;
@@ -390,4 +492,137 @@ function createPhotoInput(onFileSelected, useCamera = true) {
 
   document.body.appendChild(input);
   input.click();
+}
+
+// --- Editor helpers ---
+
+// Resize canvas and export as JPEG blob
+function compressCanvas(canvas, maxWidth, quality) {
+  return new Promise((resolve) => {
+    let width = canvas.width;
+    let height = canvas.height;
+    if (width > maxWidth) {
+      height = Math.round((height * maxWidth) / width);
+      width = maxWidth;
+    }
+    const out = document.createElement('canvas');
+    out.width = width;
+    out.height = height;
+    out.getContext('2d').drawImage(canvas, 0, 0, width, height);
+    out.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+  });
+}
+
+// Crop + apply brightness/contrast/saturation adjustments, returns a canvas
+function applyManualEdits(img, cropRect, adjustments) {
+  const { x, y, w, h } = cropRect;
+  const { brightness = 0, contrast = 0, saturation = 0 } = adjustments;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+
+  if (brightness === 0 && contrast === 0 && saturation === 0) return canvas;
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const pixels = imageData.data;
+  const pixelCount = w * h;
+
+  // Precompute contrast factor: map -100..100 to multiplier
+  const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+  for (let i = 0; i < pixelCount; i++) {
+    const idx = i * 4;
+    // Brightness (additive) + Contrast (stretch from 128)
+    let r = contrastFactor * (pixels[idx] + brightness - 128) + 128;
+    let g = contrastFactor * (pixels[idx + 1] + brightness - 128) + 128;
+    let b = contrastFactor * (pixels[idx + 2] + brightness - 128) + 128;
+
+    // Saturation
+    if (saturation !== 0) {
+      const hsl = rgbToHsl(clamp(r), clamp(g), clamp(b));
+      const satMul = 1 + saturation / 100;
+      hsl[1] = Math.min(1, Math.max(0, hsl[1] * satMul));
+      const rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
+      r = rgb[0]; g = rgb[1]; b = rgb[2];
+    }
+
+    pixels[idx] = clamp(r);
+    pixels[idx + 1] = clamp(g);
+    pixels[idx + 2] = clamp(b);
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
+// Compute auto-levels adjustment values for editor sliders
+function computeAutoAdjustments(img, cropRect) {
+  const { x, y, w, h } = cropRect;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const pixels = imageData.data;
+  const pixelCount = w * h;
+
+  // Build brightness histogram
+  const histogram = new Uint32Array(256);
+  let totalBrightness = 0;
+  for (let i = 0; i < pixelCount; i++) {
+    const br = Math.round(0.299 * pixels[i * 4] + 0.587 * pixels[i * 4 + 1] + 0.114 * pixels[i * 4 + 2]);
+    histogram[br]++;
+    totalBrightness += br;
+  }
+
+  const avgBrightness = totalBrightness / pixelCount;
+
+  // Find 1st and 99th percentile
+  const pLow = Math.floor(pixelCount * 0.01);
+  const pHigh = Math.floor(pixelCount * 0.99);
+  let cumulative = 0, lowVal = 0, highVal = 255;
+  for (let i = 0; i < 256; i++) {
+    cumulative += histogram[i];
+    if (cumulative >= pLow && lowVal === 0) lowVal = i;
+    if (cumulative >= pHigh) { highVal = i; break; }
+  }
+
+  const range = highVal - lowVal;
+
+  // Derive brightness: shift midpoint toward 128
+  let brightnessAdj = Math.round(128 - avgBrightness) * 0.5;
+  brightnessAdj = Math.max(-80, Math.min(80, brightnessAdj));
+
+  // Derive contrast: if range < 200, boost contrast
+  let contrastAdj = 0;
+  if (range < 200) {
+    contrastAdj = Math.round((200 - range) * 0.3);
+    contrastAdj = Math.min(60, contrastAdj);
+  }
+
+  // Always suggest a small saturation boost (like the existing normalizeColors does)
+  const saturationAdj = 15;
+
+  return { brightness: brightnessAdj, contrast: contrastAdj, saturation: saturationAdj };
+}
+
+// Full pipeline with manual edits: loads file, applies edits, compresses
+async function processPhotoWithEdits(file, cropRect, adjustments) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = async () => {
+      URL.revokeObjectURL(url);
+      const edited = applyManualEdits(img, cropRect, adjustments);
+      const photoBlob = await compressCanvas(edited, PHOTO_MAX_WIDTH, PHOTO_QUALITY);
+      const thumbnailBlob = await compressCanvas(edited, THUMB_MAX_WIDTH, THUMB_QUALITY);
+      resolve({ photoBlob, thumbnailBlob });
+    };
+    img.src = url;
+  });
 }

@@ -244,9 +244,20 @@ async function handleScanConfirm(cardNumber) {
   const file = window._scanFile;
   if (!file) return;
 
-  // Process and save the photo
-  const { photoBlob, thumbnailBlob } = await processPhoto(file);
-  await savePhoto(cardNumber, photoBlob, thumbnailBlob);
+  // Open editor for crop & adjust, fall back to auto-processing if editor unavailable
+  let photoResult;
+  try {
+    if (typeof openPhotoEditor === 'function') {
+      photoResult = await openPhotoEditor(file);
+      if (!photoResult) return; // User cancelled
+    } else {
+      photoResult = await processPhoto(file);
+    }
+  } catch (e) {
+    console.error('Photo processing error:', e);
+    photoResult = await processPhoto(file);
+  }
+  await savePhoto(cardNumber, photoResult.photoBlob, photoResult.thumbnailBlob);
 
   // Mark as collected if not already
   if (!isCollected(cardNumber)) {

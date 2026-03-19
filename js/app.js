@@ -4,6 +4,15 @@ async function initApp() {
   try {
     await initDB();
     await refreshCollectedSet();
+
+    // Wait for Firebase auth state (with 3-second timeout so offline startup stays fast)
+    if (typeof onAuthReady === 'function') {
+      await Promise.race([
+        new Promise((resolve) => onAuthReady(resolve)),
+        new Promise((resolve) => setTimeout(resolve, 3000))
+      ]);
+    }
+
     handleRoute();
   } catch (e) {
     document.getElementById('content').innerHTML =

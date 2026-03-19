@@ -41,7 +41,11 @@ function markCollected(cardNumber, rarity = 'white') {
       rarity,
       dateAdded: new Date().toISOString()
     });
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      resolve();
+      // Sync to cloud in background (fire-and-forget)
+      if (typeof syncCardToCloud === 'function') syncCardToCloud(cardNumber, 'collect');
+    };
     tx.onerror = () => reject(tx.error);
   });
 }
@@ -58,7 +62,10 @@ function updateRarity(cardNumber, rarity) {
         store.put(record);
       }
     };
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      resolve();
+      if (typeof syncCardToCloud === 'function') syncCardToCloud(cardNumber, 'rarity');
+    };
     tx.onerror = () => reject(tx.error);
   });
 }
@@ -68,7 +75,10 @@ function markUncollected(cardNumber) {
     const tx = db.transaction(['collection', 'photos'], 'readwrite');
     tx.objectStore('collection').delete(cardNumber);
     tx.objectStore('photos').delete(cardNumber);
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      resolve();
+      if (typeof syncCardToCloud === 'function') syncCardToCloud(cardNumber, 'remove');
+    };
     tx.onerror = () => reject(tx.error);
   });
 }
@@ -95,7 +105,10 @@ function savePhoto(cardNumber, photoBlob, thumbnailBlob) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('photos', 'readwrite');
     tx.objectStore('photos').put({ cardNumber, photoBlob, thumbnailBlob });
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      resolve();
+      if (typeof syncPhotoToCloud === 'function') syncPhotoToCloud(cardNumber);
+    };
     tx.onerror = () => reject(tx.error);
   });
 }

@@ -55,6 +55,7 @@ async function renderDashboard() {
 
   contentEl().innerHTML = `
     <div class="dashboard">
+      <div id="auth-strip" class="auth-strip"></div>
       <div class="hero-stats">
         <div class="hero-circle">
           <svg viewBox="0 0 120 120">
@@ -83,11 +84,19 @@ async function renderDashboard() {
           <button class="btn btn-secondary" onclick="handleExport()">Export Backup</button>
           <button class="btn btn-secondary" onclick="handleImport()">Import Backup</button>
         </div>
+        <div id="sync-now-wrap" class="backup-actions" style="margin-top:8px"></div>
         <div class="storage-info" id="storage-info"></div>
       </div>
     </div>`;
 
   updateStorageInfo();
+
+  // Update auth strip and sync button now that DOM is ready
+  if (typeof updateAuthUI === 'function') updateAuthUI();
+  const syncWrap = document.getElementById('sync-now-wrap');
+  if (syncWrap && typeof getCurrentUser === 'function' && getCurrentUser()) {
+    syncWrap.innerHTML = '<button class="btn btn-secondary" style="flex:1" onclick="syncOnSignIn()">Sync Now</button>';
+  }
 }
 
 async function updateStorageInfo() {

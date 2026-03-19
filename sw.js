@@ -1,7 +1,7 @@
 // Service Worker — enables offline use and PWA installability
 // Caches all app files so the app works without internet
 
-const CACHE_NAME = 'soccer-cards-v7';
+const CACHE_NAME = 'soccer-cards-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -16,6 +16,9 @@ const ASSETS = [
   './js/scan.js',
   './js/search.js',
   './js/stats.js',
+  './js/firebase-config.js',
+  './js/auth.js',
+  './js/sync.js',
   './img/placeholder.svg',
   './manifest.json'
 ];
@@ -41,13 +44,25 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch: serve from cache first, fall back to network
+// Firebase API requests bypass the cache entirely (must always hit network)
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Pass Firebase/Google API requests straight through — never cache them
+  if (url.hostname.includes('firebaseio.com') ||
+      url.hostname.includes('googleapis.com') ||
+      url.hostname.includes('firebaseinstallations.googleapis.com') ||
+      url.hostname.includes('identitytoolkit.googleapis.com') ||
+      url.hostname.includes('securetoken.googleapis.com') ||
+      url.hostname.includes('gstatic.com')) {
+    return; // Let the browser handle it normally
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
       return cached || fetch(event.request).then((response) => {
         // Cache successful GET responses for app resources
         if (event.request.method === 'GET' && response.status === 200) {
-          const url = new URL(event.request.url);
           if (url.origin === self.location.origin) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));

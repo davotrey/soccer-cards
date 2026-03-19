@@ -909,6 +909,83 @@ body {
   color: var(--text-dim);
 }
 
+/* === Auth Strip === */
+.auth-strip {
+  text-align: center;
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.auth-signed-in {
+  color: var(--text-dim);
+}
+
+.auth-signed-in strong {
+  color: var(--text);
+}
+
+.auth-link {
+  color: var(--gold);
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.btn-google-signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #4285F4;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-google-signin:active {
+  opacity: 0.8;
+}
+
+.btn-google-signin svg {
+  flex-shrink: 0;
+}
+
+/* === Sync Toast === */
+.sync-toast {
+  position: fixed;
+  top: calc(12px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%) translateY(-60px);
+  background: var(--bg-surface);
+  color: var(--text);
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 200;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  pointer-events: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+}
+
+.sync-toast.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
 /* === Scrollbar (desktop) === */
 .content::-webkit-scrollbar {
   width: 4px;

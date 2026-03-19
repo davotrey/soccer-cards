@@ -159,6 +159,12 @@ async function syncOnSignIn() {
         if (cloudDate > localDate && cloudData.rarity !== localMap[cardNumber].rarity) {
           await updateRarity(cardNumber, cloudData.rarity || 'white');
         }
+        // Download photo if we don't have one locally (handles race condition
+        // where card synced before the photo finished uploading)
+        const localPhoto = await getPhoto(cardNumber);
+        if (!localPhoto || (!localPhoto.photoBlob && !localPhoto.thumbnailBlob)) {
+          await downloadPhotoFromCloud(user.uid, cardNumber);
+        }
       }
     }
 

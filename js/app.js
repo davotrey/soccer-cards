@@ -53,6 +53,8 @@ async function handleRoute() {
   } else if (hash.startsWith('/categories/')) {
     const catId = hash.split('/')[2];
     await renderCategoryDetail(catId);
+  } else if (hash === '/scan') {
+    await renderScanScreen();
   } else if (hash === '/search') {
     await renderSearch();
   } else if (hash.startsWith('/card/')) {

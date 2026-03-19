@@ -370,11 +370,13 @@ async function processPhoto(file) {
   return { photoBlob, thumbnailBlob };
 }
 
-function createPhotoInput(onFileSelected) {
+function createPhotoInput(onFileSelected, useCamera = true) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
-  input.capture = 'environment';
+  if (useCamera) {
+    input.capture = 'environment';
+  }
   input.style.display = 'none';
 
   input.addEventListener('change', (e) => {

@@ -403,13 +403,8 @@ async function renderCardDetail(cardNumber) {
 // ── Card Actions ───────────────────────────────────────
 
 async function handleCollectCard(cardNumber) {
-  await markCollected(cardNumber);
-  await refreshCollectedSet();
-
-  // Clear thumbnail cache for this card
-  delete thumbCache[cardNumber];
-
-  // Offer photo upload
+  // Open camera FIRST — must be synchronous with user tap, before any await,
+  // otherwise mobile browsers block the programmatic file-input click
   createPhotoInput(async (file) => {
     const { photoBlob, thumbnailBlob } = await processPhoto(file);
     await savePhoto(cardNumber, photoBlob, thumbnailBlob);
@@ -417,7 +412,10 @@ async function handleCollectCard(cardNumber) {
     renderCardDetail(cardNumber);
   });
 
-  // Re-render immediately (photo will update when uploaded)
+  // Then mark as collected and re-render
+  await markCollected(cardNumber);
+  await refreshCollectedSet();
+  delete thumbCache[cardNumber];
   renderCardDetail(cardNumber);
 }
 

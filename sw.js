@@ -1,7 +1,7 @@
 // Service Worker — enables offline use and PWA installability
 // Caches all app files so the app works without internet
 
-const CACHE_NAME = 'soccer-cards-v3';
+const CACHE_NAME = 'soccer-cards-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const ASSETS = [
   './js/db.js',
   './js/ui.js',
   './js/photo.js',
+  './js/scan.js',
   './js/search.js',
   './js/stats.js',
   './img/placeholder.svg',
